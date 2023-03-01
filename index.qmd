@@ -1,0 +1,407 @@
+---
+title: "2023-03-01_UF_Data_Share"
+---
+
+## Data from FLHealthCHARTS Substance Use Dashboard Report
+
+### Years: 2021-2022
+
+URL: [Substance Use Dashboard](https://www.flhealthcharts.gov/Charts/OpenPage.aspx?tn=660)
+
+#### Load packages
+
+```{r}
+#| message: false
+#| code-fold: true
+
+library(tidyverse)
+library(janitor)
+library(scales)
+```
+
+#### Read data
+
+```{r}
+#| code-fold: true
+
+duval_2022 <- readxl::read_xlsx("data/SubstanceUseReport2022_Duval.xlsx", skip = 1) %>%
+  clean_names() %>%
+  filter(year == "2022")
+duval_2021 <- readxl::read_xlsx("data/SubstanceUseReport2021_Duval.xlsx", skip = 1) %>%
+  clean_names() %>%
+  filter(year == "2021")
+duval_2020 <- readxl::read_xlsx("data/SubstanceUseReport2020_Duval.xlsx", skip = 1) %>%
+  clean_names() %>%
+  filter(year == "2020")
+fl_2022 <- readxl::read_xlsx("data/SubstanceUseReport2022_FL.xlsx", skip = 1) %>%
+  clean_names() %>%
+  filter(year == "2022")
+fl_2021 <- readxl::read_xlsx("data/SubstanceUseReport2021_FL.xlsx", skip = 1) %>%
+  clean_names() %>%
+  filter(year == "2021")
+fl_2020 <- readxl::read_xlsx("data/SubstanceUseReport2020_FL.xlsx", skip = 1) %>%
+  clean_names() %>%
+  filter(year == "2020")
+
+
+```
+
+#### Clean data
+
+```{r}
+#| message: false
+#| code-fold: true
+
+# create function to clean data (Duval)
+
+clean_1st_step_duval_fun <- function(df) {
+  df %>%
+    drop_na() %>%
+    mutate(location = "Duval County", .before = indicator) %>%
+    pivot_longer(
+      -c(location, indicator, measure, year, year_to_date_provisional),
+      names_to = "months",
+      values_to = "counts"
+    ) %>% 
+    mutate(counts = if_else(counts == "<5", NA, counts),
+           counts = as.numeric(counts))
+}
+
+# create function to clean data (FL)
+
+clean_1st_step_fl_fun <- function(df) {
+  df %>%
+    drop_na() %>%
+    mutate(location = "Florida", .before = indicator) %>%
+    pivot_longer(
+      -c(location, indicator, measure, year, year_to_date_provisional),
+      names_to = "months",
+      values_to = "counts"
+    )
+}
+
+# use function on each dataframe
+
+duval_2022 <- clean_1st_step_duval_fun(duval_2022)
+duval_2021 <- clean_1st_step_duval_fun(duval_2021)
+duval_2020 <- clean_1st_step_duval_fun(duval_2020)
+fl_2022 <- clean_1st_step_fl_fun(fl_2022)
+fl_2021 <- clean_1st_step_fl_fun(fl_2021)
+fl_2020 <- clean_1st_step_fl_fun(fl_2020)
+
+# Combine all into a single dataframe
+
+duval_fl_2020_2022 <- bind_rows(duval_2020, duval_2021, duval_2022, fl_2020, fl_2021, fl_2022)
+
+# remove individual dataframes
+
+rm(duval_2021, duval_2022, fl_2021, fl_2022, duval_2020, fl_2020)
+
+```
+
+## Opioid Data (EMS, ED, Hospitalizations and Overdose Deaths)
+
+### Opioid Overdose Deaths by Year
+
+```{r}
+#| code-fold: true
+
+# Overdose deaths by year
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Opioid Overdose Deaths" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Opioid Overdose Deaths",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+
+```
+
+### Florida Poison Information Network Calls Related to Opioids
+
+```{r}
+#| code-fold: true
+
+# Florida Poison Information Network Calls Related to Opioids
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Florida Poison Information Network Calls Related to Opioids" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Florida Poison Control Calls Related to Opioids",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Emergency Medical Service (EMS) Responses to a Suspected Opioid-involved Overdose by Year
+
+```{r}
+#| code-fold: true
+
+# Emergency Medical Service Responses to a Suspected Opioid-involved Overdose
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Emergency Medical Service Responses to a Suspected Opioid-involved Overdose" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of EMS Responses to a\nSuspected Opioid-involved Overdose",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+
+```
+
+### Opioid-Involved Non-fatal Overdose Emergency Department (ED) Visits by Year
+
+```{r}
+#| code-fold: true
+
+# Opioid-Involved Non-fatal Overdose Emergency Department Visits  
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Opioid-Involved Non-fatal Overdose Emergency Department Visits" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Opioid-Involved Non-fatal Overdose ED Visits",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+
+```
+
+### Opioid-involved Non-fatal Overdose Hospitalizations by Year
+
+```{r}
+#| code-fold: true
+
+# Opioid-involved Non-fatal Overdose Hospitalizations
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Opioid-involved Non-fatal Overdose Hospitalizations" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Opioid-involved Non-fatal Overdose Hospitalizations",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Heroin-Involved Non-fatal Overdose Emergency Department (ED) Visits by Year
+
+```{r}
+#| code-fold: true
+
+# Heroin-Involved Non-fatal Overdose Emergency Department Visits
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Heroin-Involved Non-fatal Overdose Emergency Department Visits" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Heroin-Involved Non-fatal Overdose ED Visits",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Heroin-involved Non-fatal Overdose Hospitalizations by Year
+
+```{r}
+#| code-fold: true
+
+# Heroin-involved Non-fatal Overdose Hospitalizations
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Heroin-involved Non-fatal Overdose Hospitalizations" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Heroin-involved\nNon-fatal Overdose Hospitalizations",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+## Opioid Prescription Data
+
+### Number of Prescriptions Dispensed by Year
+
+```{r}
+#| code-fold: true
+
+# Number of Prescriptions Dispensed
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Number of Prescriptions Dispensed" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Prescriptions Dispensed",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Number of Unique Patients by Year
+
+```{r}
+#| code-fold: true
+
+# Number of Unique Patients by Year
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Number of Unique Patients" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Unique Patients",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Number of Unique Prescribers by Year
+
+```{r}
+#| code-fold: true
+
+# Number of Unique Prescribers by Year
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Number of Unique Prescribers" & measure == "Count") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location, scales = "free") +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Unique Prescribers",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Prescriptions Dispensed per Patient by Year
+
+```{r}
+#| code-fold: true
+
+# Prescriptions Dispensed per Patient by year
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Prescriptions Dispensed per Patient") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location) +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Prescriptions Dispensed per Patient (Avg.)",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```
+
+### Prescriptions Dispensed per Prescriber by Year
+
+```{r}
+#| code-fold: true
+
+# Prescriptions Dispensed per Prescriber by year
+
+duval_fl_2020_2022 %>%
+  mutate(indicator = str_trim(indicator)) %>% 
+  filter(indicator == "Prescriptions Dispensed per Prescriber") %>%
+  ggplot(aes(x = indicator, y = year_to_date_provisional, group = year, fill = year)) + 
+  geom_col(position = "dodge") +
+  geom_text(aes(label = comma(year_to_date_provisional)), position = position_dodge(0.9), vjust = 0) +
+  facet_wrap(~location) +
+  theme_light() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(y = "Number of Prescriptions Dispensed per Prescriber (Avg.)",
+       fill = "Year") +
+  scale_fill_manual(values=c("#F68E1E",
+                             "#00A0B0",
+                             "#8DB33E")) +
+  scale_y_continuous(labels = comma)
+```

@@ -1,0 +1,19 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "2023-03-01_UF_Data_Share"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+
+editor: visual
+
